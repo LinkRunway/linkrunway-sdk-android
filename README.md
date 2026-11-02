@@ -1,4 +1,28 @@
-# Android SDK
+# LinkRunway SDK for Android and Android TV
+
+[Website](https://linkrunway.com) · [Developer guide](https://linkrunway.com/resources/developers) · [Releases](https://github.com/LinkRunway/linkrunway-sdk-android/releases) · [Issues](https://github.com/LinkRunway/linkrunway-sdk-android/issues)
+
+**Published version: [0.2.1](https://github.com/LinkRunway/linkrunway-sdk-android/releases/tag/0.2.1) · [MIT license](LICENSE)**
+
+Install the published version through JitPack. The SDK supports Android API 23+; source builds require JDK 17 and Android SDK 35.
+
+The default branch may include documentation or source changes that have not been released. Use a published version for an application dependency.
+
+<details>
+<summary>Guide contents</summary>
+
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [API](#api)
+- [First-launch matching](#first-launch-matching)
+- [Referrer claims](#referrer-claims)
+- [Device attestation with Play Integrity](#device-attestation-with-play-integrity)
+- [Android TV](#android-tv)
+- [Privacy](#privacy)
+- [What was verified](#what-was-verified)
+- [Contributing and support](#contributing-and-support)
+
+</details>
 
 LinkRunway for Android is the client for Android phones, tablets and Android TV (version `0.2.1`, minSdk 23). It resolves link opens, reports non-revenue events, resolves an install's first launch, forwards the Play install referrer for ad-network verification, and attaches a Play Integrity attestation to events.
 
@@ -62,29 +86,29 @@ lifecycleScope.launch {
 }
 ```
 
-`examples/android` is a one-screen app with this flow behind a consent checkbox. Build it with the SDK's wrapper: `gradlew -p examples/android assembleRelease`. Its endpoint, key and app ID are placeholders; pass `-Plinkrunway.endpoint=… -Plinkrunway.key=… -Plinkrunway.appId=…`, and `-Plinkrunway.cloudProjectNumber=…` to package Play Integrity.
+`examples/android` is a one-screen app with this flow behind a consent checkbox. Build it with the SDK's wrapper: `./gradlew -p examples/android assembleRelease`. Its endpoint, key and app ID are placeholders; pass `-Plinkrunway.endpoint=… -Plinkrunway.key=… -Plinkrunway.appId=…`, and `-Plinkrunway.cloudProjectNumber=…` to package Play Integrity.
 
 ## API
 
 All network calls suspend; call them from a coroutine. `appId` is the app's ID in the LinkRunway console.
 
-| Member | Behaviour |
-| --- | --- |
-| `LinkRunway(context, endpoint, publishableKey, attestation = null, transport = UrlConnectionTransport())` | Throws `IllegalArgumentException` for a non-publishable key or a non-HTTPS endpoint. Detects Android TV. |
-| `setConsent(value)` | `true` loads stored state. `false` erases it (see [Privacy](#privacy)) and makes every call a no-op. |
-| `installId(): String?` | This install's random UUID, created on first use; `null` without consent. |
-| `attributionToken(): String?` | The current signed click token, for your backend to bind to an authenticated user. |
-| `captureReferrer(referrer)` | Keeps the `lr_token` from an install referrer you read yourself. |
-| `open(url): JSONObject?` | A URL carrying `lr_token` is captured locally and returns `null`; otherwise `POST /v1/resolve` and keeps the returned token. An `untracked` answer (plan click allowance reached) leaves the current token. |
-| `track(type, eventId, userId, metadata, occurredAt): JSONObject?` | `INSTALL`, `OPEN`, `SIGNUP` or `CUSTOM` only. Sends the click token, `installId` and a valid attestation. |
-| `createShare(linkId, userId, channel)` | Unchanged; throws without consent. |
-| `install(context): JSONObject?` | Resolves the first launch, then sends INSTALL once with a stable event ID. Returns `null` once delivered. |
-| `matchInstall(context): InstallMatchResult?` | First-launch matching; see below. |
-| `installMatch(): InstallMatchResult?` | The stored answer, or `null` while the server still has to be asked. No request. |
-| `submitReferrerClaim(appId): ReferrerClaimResult?` | Forwards the raw Play referrer once per install. |
-| `attest(appId): AttestationResult?` | Play Integrity attestation, cached until it expires. |
-| `createReferralCode()`, `claimReferralCode(code, claimId)` | Unchanged explicit deferred codes (see [Mobile integration](https://linkrunway.com/resources/mobile)). |
-| `LinkRunway.VERSION` | `"0.2.1"`, sent as `User-Agent: LinkRunwaySDK/0.2.1 Android` (or `AndroidTV`). |
+| Member                                                                                                    | Behaviour                                                                                                                                                                                                   |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LinkRunway(context, endpoint, publishableKey, attestation = null, transport = UrlConnectionTransport())` | Throws `IllegalArgumentException` for a non-publishable key or a non-HTTPS endpoint. Detects Android TV.                                                                                                    |
+| `setConsent(value)`                                                                                       | `true` loads stored state. `false` erases it (see [Privacy](#privacy)) and makes every call a no-op.                                                                                                        |
+| `installId(): String?`                                                                                    | This install's random UUID, created on first use; `null` without consent.                                                                                                                                   |
+| `attributionToken(): String?`                                                                             | The current signed click token, for your backend to bind to an authenticated user.                                                                                                                          |
+| `captureReferrer(referrer)`                                                                               | Keeps the `lr_token` from an install referrer you read yourself.                                                                                                                                            |
+| `open(url): JSONObject?`                                                                                  | A URL carrying `lr_token` is captured locally and returns `null`; otherwise `POST /v1/resolve` and keeps the returned token. An `untracked` answer (plan click allowance reached) leaves the current token. |
+| `track(type, eventId, userId, metadata, occurredAt): JSONObject?`                                         | `INSTALL`, `OPEN`, `SIGNUP` or `CUSTOM` only. Sends the click token, `installId` and a valid attestation.                                                                                                   |
+| `createShare(linkId, userId, channel)`                                                                    | Unchanged; throws without consent.                                                                                                                                                                          |
+| `install(context): JSONObject?`                                                                           | Resolves the first launch, then sends INSTALL once with a stable event ID. Returns `null` once delivered.                                                                                                   |
+| `matchInstall(context): InstallMatchResult?`                                                              | First-launch matching; see below.                                                                                                                                                                           |
+| `installMatch(): InstallMatchResult?`                                                                     | The stored answer, or `null` while the server still has to be asked. No request.                                                                                                                            |
+| `submitReferrerClaim(appId): ReferrerClaimResult?`                                                        | Forwards the raw Play referrer once per install.                                                                                                                                                            |
+| `attest(appId): AttestationResult?`                                                                       | Play Integrity attestation, cached until it expires.                                                                                                                                                        |
+| `createReferralCode()`, `claimReferralCode(code, claimId)`                                                | Unchanged explicit deferred codes (see [Mobile integration](https://linkrunway.com/resources/mobile)).                                                                                                                        |
+| `LinkRunway.VERSION`                                                                                      | `"0.2.1"`, sent as `User-Agent: LinkRunwaySDK/0.2.1 Android` (or `AndroidTV`).                                                                                                                              |
 
 Without consent no call makes a request: they return `null` (`captureReferrer` does nothing), except `createShare` and `createReferralCode`, which throw `IllegalStateException`.
 
@@ -103,8 +127,14 @@ Errors and retries: every request is tried three times. A 429, a 5xx or a transp
 `matchInstall(context)` reads the Play install referrer and calls `POST /v1/installs/match`:
 
 ```json
-{ "installId": "<uuid>", "platform": "android", "osVersion": "14", "language": "en-US",
-  "referrer": "<raw Play install referrer>", "consent": true }
+{
+  "installId": "<uuid>",
+  "platform": "android",
+  "osVersion": "14",
+  "language": "en-US",
+  "referrer": "<raw Play install referrer>",
+  "consent": true
+}
 ```
 
 The server tries, in order: the signed LinkRunway token in the referrer (`REFERRER`), then probabilistic click matching and view-through, each only when the workspace owner enabled it, then `NONE`. See [Attribution](https://linkrunway.com/resources/attribution). `osVersion` is sent only as `major[.minor[.patch]]`, and `language` is the system language without extension or private-use subtags; either is left out when Android reports another format. A referrer longer than the contract's 4,000 characters is reduced to its `lr_token`.
@@ -194,3 +224,11 @@ Run from `.`:
 - **Instrumented smoke test** on an Android 16 emulator (Google Play system image, no Google account): the default transport, real SharedPreferences, the real Install Referrer client, the backup marker, and Play Integrity. Play returned `utm_source=google-play&utm_medium=organic` for the sideloaded test app. On the first run, just after the emulator booted, the referrer read hit the then 10-second timeout while the Play Store started; the timeout is now 30 seconds, and the second run passed all four tests. Play Integrity did not issue a token there: the classic request failed with `-3` (`NETWORK_ERROR`), and the standard request hit the SDK's 60-second provider timeout. Tracking continued in both cases.
 
 Not verified: real phones, tablets or TVs; an install from Google Play whose referrer carries a LinkRunway token; a real Play Integrity token and its acceptance by the server; Meta or Google claims end to end; a running LinkRunway API (requests were checked against the server's contracts and code, with local test servers); Play review and Data safety. No store or device certification is claimed.
+
+## Contributing and support
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for local development checks and the pull request process. See the [changelog](CHANGELOG.md) and [release history](https://github.com/LinkRunway/linkrunway-sdk-android/releases) when upgrading. The [other LinkRunway SDKs](https://github.com/LinkRunway#sdk-repositories) are maintained in separate repositories.
+
+For account, billing, or private integration questions, email **support@linkrunway.com**. Report reproducible SDK bugs in this repository with a redacted reproduction. Follow [SECURITY.md](SECURITY.md) for vulnerabilities and [SUPPORT.md](SUPPORT.md) for help channels. Participation follows our [code of conduct](CODE_OF_CONDUCT.md).
+
+The SDK code is distributed under [MIT](LICENSE). Hosted LinkRunway usage is governed by its [Terms of Service](https://linkrunway.com/terms) and [Privacy Policy](https://linkrunway.com/privacy). Community guidance is also available in the [organization repository](https://github.com/LinkRunway/.github/blob/main/README.md).
